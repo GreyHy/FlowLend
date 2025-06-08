@@ -60,6 +60,9 @@ WETH 代币部署在: 0xBd3acBCB193a4BD9d499DdF70BC7CA1f0ab54979(用途: 测试�
 MONAD 代币部署在: 0x58B007DAB46709D04E8010F481a1dE9f0f6d36bD(用途: 测试代币)
 RangeLend 协议部署在: 0xd8Ab620d9408CdF68A7617c677F51BD3a37092e1(用途: 主协议合约，管理借贷功能)
 
+## RangeLend合约类图
+![image](RangeLend_Contract_Class_diagram.png)
+
 ## 如何使用
 
 1. **提供流动性**：用户可以选择一个资产以及他们希望的APR区间来提供流动性

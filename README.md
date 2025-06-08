@@ -10,13 +10,12 @@ FlowLend/
 ├── contract/ - Solidity智能合约
 └── frontend/ - Next.js前端应用
 ```
-
 ## 核心功能
 
 - **基于APR区间的流动性提供**：贷方可以设定自己愿意接受的最低和最高APR，只有在这个范围内的借款请求才会使用其流动性
 - **精确匹配借款利率**：借款人可以指定期望的APR，系统会自动匹配相应区间的流动性
 - **抵押借款机制**：支持抵押品管理和流动性风险控制
-- **多资产支持**：支持USDC、USDT、DAI和ETH等多种资产
+- **多资产支持**：支持USDC、USDT、DAI、ETH、Monad等多种资产
 
 ## 技术栈
 
@@ -62,6 +61,7 @@ RangeLend 协议部署在: 0xd8Ab620d9408CdF68A7617c677F51BD3a37092e1(用途: �
 
 ## RangeLend合约类图
 ![image](RangeLend_Contract_Class_diagram.png)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/GreyHy/FlowLend)
 
 ## 如何使用
 

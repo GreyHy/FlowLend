@@ -51,13 +51,14 @@ npx hardhat node  # 启动本地测试网络
 npx hardhat run scripts/deploy.js --network localhost  # 部署合约
 ```
 
-## 智能合约地址 (本地测试网络)
+## 所有部署在Monad Testnet的合约地址
 
-- USDC: 0x5FbDB2315678afecb367f032d93F642f64180aa3
-- USDT: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
-- DAI: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
-- WETH: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-- RangeLend: 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+USDC 代币部署在: 0x129FA4D3F41Ee5439C711575779dfe1062551812(用途: 测试代币)
+USDT 代币部署在: 0xfD54fEf4a9359aAC37Fc61F44762852c7f4492e0(用途: 测试代币)
+DAI 代币部署在: 0x97200232caF5E062D0b916d398eBBCD2e636b9F3(用途: 测试代币)
+WETH 代币部署在: 0xBd3acBCB193a4BD9d499DdF70BC7CA1f0ab54979(用途: 测试代币)
+MONAD 代币部署在: 0x58B007DAB46709D04E8010F481a1dE9f0f6d36bD(用途: 测试代币)
+RangeLend 协议部署在: 0xd8Ab620d9408CdF68A7617c677F51BD3a37092e1(用途: 主协议合约，管理借贷功能)
 
 ## 如何使用
 

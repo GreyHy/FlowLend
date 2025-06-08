@@ -2,29 +2,85 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { ethers } from 'ethers'
+import { useAccount } from 'wagmi'
+import { toast } from 'react-hot-toast'
+import { provideLiquidity } from '../utils/contracts'
 
 const supportedAssets = [
   { id: 'usdc', name: 'USDC', icon: '/assets/usdc.svg', balance: '10,000.00' },
   { id: 'usdt', name: 'USDT', icon: '/assets/usdt.svg', balance: '5,000.00' },
   { id: 'dai', name: 'DAI', icon: '/assets/dai.svg', balance: '2,500.00' },
-  { id: 'eth', name: 'ETH', icon: '/assets/eth.svg', balance: '5.25' },
+  { id: 'eth', name: 'WETH', icon: '/assets/eth.svg', balance: '5.25' },
+  { id: 'monad', name: 'MONAD', icon: '/assets/monad.svg', balance: '500.00' },
 ]
 
 export default function LendPage() {
+  const { address, isConnected } = useAccount()
   const [selectedAsset, setSelectedAsset] = useState(supportedAssets[0])
   const [amount, setAmount] = useState('')
   const [minApr, setMinApr] = useState('5')
   const [maxApr, setMaxApr] = useState('7')
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      asset: selectedAsset.id,
-      amount,
-      minApr: parseFloat(minApr),
-      maxApr: parseFloat(maxApr),
-    })
-    // 这里将连接智能合约进行出借操作
+    
+    if (!isConnected || !address) {
+      toast.error('请先连接钱包')
+      return
+    }
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error('请输入有效金额')
+      return
+    }
+    
+    const minAprValue = parseFloat(minApr)
+    const maxAprValue = parseFloat(maxApr)
+    
+    if (minAprValue >= maxAprValue) {
+      toast.error('最小APR必须小于最大APR')
+      return
+    }
+    
+    try {
+      setIsLoading(true)
+      toast.loading('交易处理中...')
+      
+      // 获取provider和signer
+      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      const signer = provider.getSigner()
+      
+      // 调用合约
+      const tx = await provideLiquidity(
+        selectedAsset.id,
+        amount,
+        minAprValue,
+        maxAprValue,
+        signer
+      )
+      
+      toast.dismiss()
+      toast.success('出借成功！交易哈希: ' + tx.transactionHash)
+      
+      // 清空表单
+      setAmount('')
+    } catch (error: unknown) {
+      console.error('出借失败:', error)
+      toast.dismiss()
+      
+      let errorMessage = '未知错误'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      toast.error('出借失败: ' + errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -39,7 +95,7 @@ export default function LendPage() {
             <form onSubmit={handleSubmit}>
               <div className="mb-6">
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">选择资产</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   {supportedAssets.map((asset) => (
                     <button
                       key={asset.id}
@@ -85,7 +141,7 @@ export default function LendPage() {
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 font-medium"
-                    onClick={() => setAmount(selectedAsset.balance)}
+                    onClick={() => setAmount(selectedAsset.balance.replace(/,/g, ''))}
                   >
                     最大
                   </button>
@@ -165,9 +221,26 @@ export default function LendPage() {
               
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                aria-disabled={!isConnected || isLoading}
+                className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
+                  !isConnected 
+                    ? 'bg-gray-400 text-white pointer-events-none' 
+                    : isLoading 
+                      ? 'bg-blue-400 text-white pointer-events-none'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                onClick={(e) => {
+                  if (!isConnected || isLoading) {
+                    e.preventDefault();
+                    return;
+                  }
+                }}
               >
-                确认出借
+                {!isConnected 
+                  ? '请先连接钱包' 
+                  : isLoading 
+                    ? '处理中...' 
+                    : '确认出借'}
               </button>
             </form>
           </div>

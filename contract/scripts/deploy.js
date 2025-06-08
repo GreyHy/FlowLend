@@ -21,6 +21,10 @@ async function main() {
   const WETH = await hre.ethers.deployContract("TestToken", ["Wrapped Ether", "WETH", 18, 1000]);
   await WETH.waitForDeployment();
   console.log("WETH 代币部署在:", WETH.target);
+
+  const MONAD = await hre.ethers.deployContract("TestToken", ["Monad", "MONAD", 18, 10000]);
+  await MONAD.waitForDeployment();
+  console.log("MONAD 代币部署在:", MONAD.target);
   
   // 部署RangeLend协议
   const RangeLend = await hre.ethers.deployContract("RangeLend");
@@ -39,6 +43,9 @@ async function main() {
   
   await RangeLend.addAsset("WETH", WETH.target, 8000); // 80% 抵押率
   console.log("添加WETH到RangeLend");
+
+  await RangeLend.addAsset("MONAD", MONAD.target, 7000); // 70% 抵押率
+  console.log("添加MONAD到RangeLend");
   
   console.log("部署完成!");
 }

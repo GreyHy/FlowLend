@@ -2,12 +2,17 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { ethers } from 'ethers'
+import { useAccount } from 'wagmi'
+import { toast } from 'react-hot-toast'
+import { borrowAsset } from '../utils/contracts'
 
 const supportedAssets = [
   { id: 'usdc', name: 'USDC', icon: '/assets/usdc.svg', availableLiquidity: '8.2M' },
   { id: 'usdt', name: 'USDT', icon: '/assets/usdt.svg', availableLiquidity: '4.6M' },
   { id: 'dai', name: 'DAI', icon: '/assets/dai.svg', availableLiquidity: '2.1M' },
-  { id: 'eth', name: 'ETH', icon: '/assets/eth.svg', availableLiquidity: '1,200' },
+  { id: 'eth', name: 'WETH', icon: '/assets/eth.svg', availableLiquidity: '1,200' },
+  { id: 'monad', name: 'MONAD', icon: '/assets/monad.svg', availableLiquidity: '3.5M' },
 ]
 
 const liquidityRanges = [
@@ -18,20 +23,83 @@ const liquidityRanges = [
   { min: 10, max: 15, liquidity: '0.6M', color: 'bg-red-500' },
 ]
 
-export default function BorrowPage() {
-  const [selectedAsset, setSelectedAsset] = useState(supportedAssets[0])
-  const [amount, setAmount] = useState('')
-  const [targetApr, setTargetApr] = useState('6')
-  const [availableCollateral, setAvailableCollateral] = useState('15,000.00 USDC')
+// 抵押品资产
+const collateralAssets = [
+  { id: 'usdc', name: 'USDC', balance: '15,000.00' },
+  { id: 'usdt', name: 'USDT', balance: '7,500.00' },
+  { id: 'dai', name: 'DAI', balance: '3,750.00' },
+  { id: 'eth', name: 'WETH', balance: '8.75' },
+  { id: 'monad', name: 'MONAD', balance: '100.00' },
+]
 
-  const handleSubmit = (e: React.FormEvent) => {
+export default function BorrowPage() {
+  const { address, isConnected } = useAccount()
+  const [selectedAsset, setSelectedAsset] = useState(supportedAssets[0])
+  const [selectedCollateral, setSelectedCollateral] = useState(collateralAssets[0])
+  const [amount, setAmount] = useState('')
+  const [collateralAmount, setCollateralAmount] = useState('')
+  const [targetApr, setTargetApr] = useState('6')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      asset: selectedAsset.id,
-      amount,
-      targetApr: parseFloat(targetApr),
-    })
-    // 这里将连接智能合约进行借款操作
+    
+    if (!isConnected || !address) {
+      toast.error('请先连接钱包')
+      return
+    }
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error('请输入有效借款金额')
+      return
+    }
+    
+    if (!collateralAmount || parseFloat(collateralAmount) <= 0) {
+      toast.error('请输入有效抵押品金额')
+      return
+    }
+    
+    const targetAprValue = parseFloat(targetApr)
+    
+    try {
+      setIsLoading(true)
+      toast.loading('交易处理中...')
+      
+      // 获取provider和signer
+      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      const signer = provider.getSigner()
+      
+      // 调用合约
+      const tx = await borrowAsset(
+        selectedAsset.id,
+        amount,
+        targetAprValue,
+        selectedCollateral.id,
+        collateralAmount,
+        signer
+      )
+      
+      toast.dismiss()
+      toast.success('借款成功！交易哈希: ' + tx.transactionHash)
+      
+      // 清空表单
+      setAmount('')
+      setCollateralAmount('')
+    } catch (error: unknown) {
+      console.error('借款失败:', error)
+      toast.dismiss()
+      
+      let errorMessage = '未知错误'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      toast.error('借款失败: ' + errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -45,8 +113,8 @@ export default function BorrowPage() {
             
             <form onSubmit={handleSubmit}>
               <div className="mb-6">
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">选择资产</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">选择借款资产</label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   {supportedAssets.map((asset) => (
                     <button
                       key={asset.id}
@@ -92,7 +160,7 @@ export default function BorrowPage() {
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 font-medium"
-                    onClick={() => setAmount(selectedAsset.availableLiquidity)}
+                    onClick={() => setAmount(selectedAsset.availableLiquidity.replace(/,/g, ''))}
                   >
                     最大
                   </button>
@@ -121,6 +189,61 @@ export default function BorrowPage() {
                 </div>
                 <div className="text-center mt-2">
                   <span className="text-2xl font-bold">{targetApr}%</span>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">选择抵押品</label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {collateralAssets.map((asset) => (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
+                        selectedCollateral.id === asset.id
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                          : 'border-gray-200 dark:border-gray-700'
+                      }`}
+                      onClick={() => setSelectedCollateral(asset)}
+                    >
+                      <div className="w-10 h-10 mb-2 relative">
+                        <Image
+                          src={`/assets/${asset.id}.svg`}
+                          alt={asset.name}
+                          fill
+                          style={{ objectFit: 'contain' }}
+                        />
+                      </div>
+                      <span className="font-medium">{asset.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  余额: {selectedCollateral.balance} {selectedCollateral.name}
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="collateralAmount" className="block text-gray-700 dark:text-gray-300 mb-2">
+                  抵押品金额
+                </label>
+                <div className="relative">
+                  <input
+                    id="collateralAmount"
+                    type="text"
+                    value={collateralAmount}
+                    onChange={(e) => setCollateralAmount(e.target.value)}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700"
+                    placeholder="输入抵押品金额"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 font-medium"
+                    onClick={() => setCollateralAmount(selectedCollateral.balance.replace(/,/g, ''))}
+                  >
+                    最大
+                  </button>
                 </div>
               </div>
               
@@ -155,17 +278,35 @@ export default function BorrowPage() {
                     <p className="text-lg font-semibold">{targetApr}%</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">可用抵押物</p>
-                    <p className="text-lg font-semibold">{availableCollateral}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">抵押品</p>
+                    <p className="text-lg font-semibold">
+                      {collateralAmount ? `${collateralAmount} ${selectedCollateral.name}` : '-'}
+                    </p>
                   </div>
                 </div>
               </div>
               
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                aria-disabled={!isConnected || isLoading}
+                className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
+                  !isConnected 
+                    ? 'bg-gray-400 text-white pointer-events-none' 
+                    : isLoading 
+                      ? 'bg-blue-400 text-white pointer-events-none'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                onClick={(e) => {
+                  if (!isConnected || isLoading) {
+                    e.preventDefault();
+                  }
+                }}
               >
-                确认借款
+                {!isConnected 
+                  ? '请先连接钱包' 
+                  : isLoading 
+                    ? '处理中...' 
+                    : '确认借款'}
               </button>
             </form>
           </div>
